@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { speak } from '@/lib/tts';
+import { speak } from '@/app/lib/tts';
 
 type SpeciesId = 'salvia_officinalis' | 'leucophyllum_frutescens' | 'cosmos_bipinnatus';
 type Pheno = 'brotacion' | 'boton' | 'floracion' | 'fructificacion';

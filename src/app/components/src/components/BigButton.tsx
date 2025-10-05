@@ -3,11 +3,7 @@ import { speak } from '@/app/lib/tts';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-type Props = {
-  label: string;
-  icon: ReactNode;
-  href: string;
-};
+type Props = { label: string; icon: ReactNode; href: string };
 
 export default function BigButton({ label, icon, href }: Props) {
   return (
