@@ -12,6 +12,16 @@ const SPECIES: { id: SpeciesId; label: string }[] = [
   { id: 'cosmos_bipinnatus', label: 'Cosmos bipinnatus' },
 ];
 
+// Helper: File -> dataURL para guardar la foto en localStorage
+function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
 export default function CapturePage() {
   const [speciesId, setSpeciesId] = useState<SpeciesId>('salvia_officinalis');
   const [phenophase, setPhenophase] = useState<Pheno>('floracion');
@@ -49,17 +59,33 @@ export default function CapturePage() {
       const ok = confirm('No tenemos ubicación. ¿Deseas guardar de todos modos?');
       if (!ok) return;
     }
+
     setSubmitting(true);
     try {
-      // MVP sin backend: solo mostramos resumen.
-      const msg = `Especie: ${speciesId}\nEtapa: ${phenophase}\nUbicación: ${lat?.toFixed(5) ?? '-'}, ${lon?.toFixed(5) ?? '-'}\nPrecisión: ${acc ? Math.round(acc) + ' m' : '-'}`;
-      console.log('[Sighting demo]', { speciesId, phenophase, lat, lon, acc, photo });
-      speak('Avistamiento guardado en modo demo');
-      alert('✅ Avistamiento (demo)\n\n' + msg);
+      const photoDataURL = await fileToDataURL(photo);
 
-      // Enlazar a inicio
-      window.location.href = '/';
+      // Cargar lista previa, añadir nuevo y guardar
+      const prev: any[] = JSON.parse(localStorage.getItem('sightings_v1') || '[]');
+      const item = {
+        id: Date.now(),
+        speciesId,
+        phenophase,
+        lat,
+        lon,
+        accuracyM: acc ?? null,
+        datetimeISO: new Date().toISOString(),
+        photoDataURL,
+      };
+      const next = [item, ...prev];
+      localStorage.setItem('sightings_v1', JSON.stringify(next));
+
+      speak('Avistamiento guardado');
+      alert('✅ Avistamiento guardado en este dispositivo');
+
+      // Ir al mapa para verlo
+      window.location.href = '/map';
     } catch (e) {
+      console.error(e);
       alert('Error al guardar');
     } finally {
       setSubmitting(false);
@@ -86,6 +112,7 @@ export default function CapturePage() {
           src={previewUrl}
           alt="Vista previa"
           className="rounded-xl border w-full max-h-72 object-cover"
+          onLoad={() => URL.revokeObjectURL(previewUrl)}
         />
       )}
 
@@ -135,12 +162,11 @@ export default function CapturePage() {
         onFocus={() => speak('Confirmar avistamiento')}
         onMouseEnter={() => speak('Confirmar avistamiento')}
       >
-        {submitting ? 'Guardando…' : 'Confirmar (demo)'}
+        {submitting ? 'Guardando…' : 'Confirmar'}
       </button>
 
       <p className="text-xs text-gray-500">
-        *Modo demo: guarda en memoria y muestra resumen. En el siguiente paso conectaremos con
-        base de datos para enviar la foto y los datos.
+        *MVP: se guarda localmente. Luego conectaremos base de datos en la nube.
       </p>
     </main>
   );
