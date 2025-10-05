@@ -20,8 +20,13 @@ const SPECIES: Species[] = [
     short:
       'Hasta ~70 cm; tallos erectos y pubescentes; hojas ovaladas con nervadura marcada; flores blanco-violáceas en racimos.',
     facts: [
-      'Corola hasta 3 cm con labio superior casi recto.',
-      'Cáliz más pequeño que la corola con tonos púrpura.',
+      'Nombre común: Salvia, Salvia común, Salvia culinaria.',
+      'Nombre científico: Salvia officinalis L.',
+      'Uso medicinal o tradicional: Propiedades anti sudoríficas, antisépticas bucales, antiinflamatorias y digestivas. Se usa en infusiones para gargarismos y para aliviar molestias digestivas. Es ampliamente usada como condimento culinario.',
+      'Polinizadores: Abejas y abejorros.',
+      'Temporada de floración: Primavera a verano.',
+      'Número de visitantes (Importancia): Alta. Atrae a una gran diversidad de polinizadores, siendo una planta melífera valiosa.',
+      'Nutrientes principales: Aceites esenciales (tuyona, cineol), flavonoides y ácidos fenólicos.',
     ],
   },
   {
@@ -31,8 +36,13 @@ const SPECIES: Species[] = [
     short:
       'Arbusto denso (1–2.5 m) con hojas ovaladas aterciopeladas; flores pequeñas en forma de campana/embudo moradas o violetas.',
     facts: [
-      'Floración intermitente, a menudo detonada por lluvia.',
-      'Cinco lóbulos y dos “labios” en la flor.',
+      'Nombre común:Cenizo, Sábila del desierto, Texas Ranger.',
+      'Nombre científico: Leucophyllum frutescens .',
+      'Uso medicinal o tradicional:En infusión para tratar cólicos, dolor de estómago, tos, fiebre y problemas biliares.',
+      'Polinizadores: Abejas.',
+      'Temporada de floración: De forma explosiva tras lluvias, desde mayo hasta septiembre.',
+      'Número de visitantes (Importancia): Media-Alta. Su floración masiva y oportuna proporciona recursos críticos de néctar y polen en épocas de sequía.',
+      'Nutrientes principales: No se reportan nutrientes edibles significativos. Su valor es principalmente medicinal y ecológico.',
     ],
   },
   {
@@ -42,8 +52,13 @@ const SPECIES: Species[] = [
     short:
       '60–120 cm; hojas bipinnadas muy divididas; flores en rosa, púrpura o blanco con centro amarillo anaranjado.',
     facts: [
-      'Disco central de flores tubulares pequeñas.',
-      'Puede mezclar dos colores en la misma flor.',
+      'Nombre común:Cosmos, Mirasol.',
+      'Nombre científico:  Cosmos bipinnatus Cav.',
+      'Uso medicinal o tradicional:Uso principalmente ornamental. Las flores y hojas tiernas son comestibles en ensaladas.',
+      'Polinizadores: Abejas, mariposas y sírfidos.',
+      'Temporada de floración: Verano hasta el otoño (junio a noviembre).',
+      'Número de visitantes (Importancia): Media-Alta. Su floración masiva y oportuna proporciona recursos críticos de néctar y polen en épocas de sequía.',
+      'Nutrientes principales: Muy Alta. Es una de las plantas favoritas de los polinizadores, especialmente en jardines de mariposas.',
     ],
   },
 ];
