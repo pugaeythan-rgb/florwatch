@@ -1,8 +1,20 @@
 'use client';
 
+
 import { useEffect, useMemo, useState } from 'react';
 import { speak } from '@/app/lib/tts';
-import { SPECIES, PHENO_PHASES, SpeciesId, Pheno } from '@/app/lib/species';
+
+
+type SpeciesId = 'salvia_officinalis' | 'leucophyllum_frutescens' | 'cosmos_bipinnatus';
+type Pheno = 'brotacion' | 'boton' | 'floracion' | 'fructificacion';
+
+
+const SPECIES: { id: SpeciesId; label: string }[] = [
+  { id: 'salvia_officinalis', label: 'Salvia officinalis' },
+  { id: 'leucophyllum_frutescens', label: 'Leucophyllum frutescens' },
+  { id: 'cosmos_bipinnatus', label: 'Cosmos bipinnatus' },
+];
+
 
 export default function CapturePage() {
   const [speciesId, setSpeciesId] = useState<SpeciesId>('salvia_officinalis');
@@ -12,41 +24,37 @@ export default function CapturePage() {
   const [lon, setLon] = useState<number | null>(null);
   const [acc, setAcc] = useState<number | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null); // Para mostrar error de GPS
 
-  // Checar si ya se obtuvo la ubicación
-  const ubicacionLista = lat !== null && lon !== null;
 
   useEffect(() => {
-    // Solicitar ubicación al cargar
+    // Obtener ubicación al cargar
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (p) => {
           setLat(p.coords.latitude);
           setLon(p.coords.longitude);
           setAcc(p.coords.accuracy);
-          setGeoError(null); // Si funciona, limpiamos el error
         },
-        (err) => {
-          setGeoError('No se pudo obtener tu ubicación. Actívala para continuar.');
+        () => {
+          // si el usuario niega permisos, dejamos lat/lon en null
         },
         { enableHighAccuracy: true, timeout: 8000 }
       );
-    } else {
-      setGeoError('Este dispositivo no soporta geolocalización.');
     }
   }, []);
 
+
   const previewUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : ''), [photo]);
+
 
   async function onSubmit() {
     if (!photo) {
-      speak('Falta la foto');
+      alert('Falta la foto.');
       return;
     }
-    if (!ubicacionLista) {
-      speak('Debes activar la ubicación para continuar');
-      return;
+    if (lat == null || lon == null) {
+      const ok = confirm('No tenemos ubicación. ¿Deseas guardar de todos modos?');
+      if (!ok) return;
     }
     setSubmitting(true);
     try {
@@ -55,6 +63,7 @@ export default function CapturePage() {
       console.log('[Sighting demo]', { speciesId, phenophase, lat, lon, acc, photo });
       speak('Avistamiento guardado en modo demo');
       alert('✅ Avistamiento (demo)\n\n' + msg);
+
 
       // Enlazar a inicio
       window.location.href = '/';
@@ -65,18 +74,11 @@ export default function CapturePage() {
     }
   }
 
+
   return (
     <main className="mx-auto max-w-md p-6 space-y-4">
       <h2 className="text-xl font-bold">Nuevo avistamiento</h2>
 
-      {/* Mensaje si la ubicación aún no está lista */}
-      {!ubicacionLista && (
-        <p className="text-xs text-red-600 mb-2">
-          {geoError
-            ? geoError + ' Por favor, activa el GPS y recarga la página.'
-            : 'Esperando acceso a tu ubicación...'}
-        </p>
-      )}
 
       {/* Foto */}
       <label className="block text-sm font-medium">Foto (cámara o galería)</label>
@@ -86,7 +88,6 @@ export default function CapturePage() {
         accept="image/*"
         capture="environment"
         aria-label="Subir foto"
-        disabled={!ubicacionLista}
         onFocus={() => speak('Subir foto')}
         onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
       />
@@ -98,6 +99,7 @@ export default function CapturePage() {
         />
       )}
 
+
       {/* Selecciones */}
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -106,7 +108,6 @@ export default function CapturePage() {
             className="w-full border rounded p-2"
             value={speciesId}
             onChange={(e) => setSpeciesId(e.target.value as SpeciesId)}
-            disabled={!ubicacionLista}
             onFocus={() => speak('Seleccionar especie')}
           >
             {SPECIES.map((s) => (
@@ -122,17 +123,16 @@ export default function CapturePage() {
             className="w-full border rounded p-2"
             value={phenophase}
             onChange={(e) => setPhenophase(e.target.value as Pheno)}
-            disabled={!ubicacionLista}
             onFocus={() => speak('Seleccionar etapa')}
           >
-            {PHENO_PHASES.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
+            <option value="brotacion">Brotación</option>
+            <option value="boton">Botón floral</option>
+            <option value="floracion">Floración</option>
+            <option value="fructificacion">Fructificación</option>
           </select>
         </div>
       </div>
+
 
       {/* Ubicación */}
       <p className="text-sm text-gray-600">
@@ -140,8 +140,9 @@ export default function CapturePage() {
         {acc ? `(±${Math.round(acc)} m)` : ''}
       </p>
 
+
       <button
-        disabled={!ubicacionLista || submitting || !photo}
+        disabled={submitting}
         onClick={onSubmit}
         className="w-full p-4 rounded-2xl bg-green-600 text-white font-semibold disabled:opacity-50"
         onFocus={() => speak('Confirmar avistamiento')}
@@ -150,6 +151,7 @@ export default function CapturePage() {
         {submitting ? 'Guardando…' : 'Confirmar (demo)'}
       </button>
 
+
       <p className="text-xs text-gray-500">
         *Modo demo: guarda en memoria y muestra resumen. En el siguiente paso conectaremos con
         base de datos para enviar la foto y los datos.
@@ -157,3 +159,6 @@ export default function CapturePage() {
     </main>
   );
 }
+
+
+
