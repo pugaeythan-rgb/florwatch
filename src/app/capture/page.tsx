@@ -1,173 +1,141 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { speak } from '@/app/lib/tts';
+import Link from 'next/link';
+import { speak } from '@/lib/tts';
 
-type SpeciesId = 'salvia_officinalis' | 'leucophyllum_frutescens' | 'cosmos_bipinnatus';
-type Pheno = 'brotacion' | 'boton' | 'floracion' | 'fructificacion';
+// Leaflet / React-Leaflet
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 
-const SPECIES: { id: SpeciesId; label: string }[] = [
-  { id: 'salvia_officinalis', label: 'Salvia officinalis' },
-  { id: 'leucophyllum_frutescens', label: 'Leucophyllum frutescens' },
-  { id: 'cosmos_bipinnatus', label: 'Cosmos bipinnatus' },
-];
+type Sighting = {
+  id: number;
+  speciesId: 'salvia_officinalis' | 'leucophyllum_frutescens' | 'cosmos_bipinnatus' | string;
+  phenophase: 'brotacion' | 'boton' | 'floracion' | 'fructificacion' | string;
+  lat: number | null;
+  lon: number | null;
+  accuracyM: number | null;
+  datetimeISO: string;
+  photoDataURL?: string;
+};
 
-// Helper: File -> dataURL para guardar la foto en localStorage
-function fileToDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
+// Colores por especie (puedes ajustar a tu gusto)
+function speciesColor(id: string) {
+  const m: Record<string, string> = {
+    salvia_officinalis: '#4caf50',        // salvia
+    leucophyllum_frutescens: '#2196f3',   // cenizo
+    cosmos_bipinnatus: '#ff9800',         // cosmos
+  };
+  return m[id] ?? '#607d8b';
 }
 
-export default function CapturePage() {
-  const [speciesId, setSpeciesId] = useState<SpeciesId>('salvia_officinalis');
-  const [phenophase, setPhenophase] = useState<Pheno>('floracion');
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [lat, setLat] = useState<number | null>(null);
-  const [lon, setLon] = useState<number | null>(null);
-  const [acc, setAcc] = useState<number | undefined>();
-  const [submitting, setSubmitting] = useState(false);
-
+export default function MapPage() {
+  // Cargar avistamientos que guardamos en /capture
+  const [sightings, setSightings] = useState<Sighting[]>([]);
   useEffect(() => {
-    // Obtener ubicación al cargar
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (p) => {
-          setLat(p.coords.latitude);
-          setLon(p.coords.longitude);
-          setAcc(p.coords.accuracy);
-        },
-        () => {
-          // si el usuario niega permisos, dejamos lat/lon en null
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
+    try {
+      const raw = localStorage.getItem('sightings_v1') || '[]';
+      const parsed = JSON.parse(raw) as Sighting[];
+      setSightings(parsed.filter(s => typeof s.lat === 'number' && typeof s.lon === 'number'));
+    } catch {
+      setSightings([]);
     }
   }, []);
 
-  const previewUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : ''), [photo]);
+  // Centro CDMX
+  const center: [number, number] = [19.4326, -99.1332];
+  const zoom = 11;
 
-  async function onSubmit() {
-    if (!photo) {
-      alert('Falta la foto.');
-      return;
-    }
-    if (lat == null || lon == null) {
-      const ok = confirm('No tenemos ubicación. ¿Deseas guardar de todos modos?');
-      if (!ok) return;
-    }
+  const hasData = sightings.length > 0;
 
-    setSubmitting(true);
-    try {
-      const photoDataURL = await fileToDataURL(photo);
-
-      // Cargar lista previa, añadir nuevo y guardar
-      const prev: any[] = JSON.parse(localStorage.getItem('sightings_v1') || '[]');
-      const item = {
-        id: Date.now(),
-        speciesId,
-        phenophase,
-        lat,
-        lon,
-        accuracyM: acc ?? null,
-        datetimeISO: new Date().toISOString(),
-        photoDataURL,
-      };
-      const next = [item, ...prev];
-      localStorage.setItem('sightings_v1', JSON.stringify(next));
-
-      speak('Avistamiento guardado');
-      alert('✅ Avistamiento guardado en este dispositivo');
-
-      // Ir al mapa para verlo
-      window.location.href = '/map';
-    } catch (e) {
-      console.error(e);
-      alert('Error al guardar');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const markers = useMemo(() => {
+    return sightings.map((s) => {
+      const color = speciesColor(s.speciesId);
+      const pos: [number, number] = [Number(s.lat), Number(s.lon)];
+      return { s, color, pos };
+    });
+  }, [sightings]);
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-4">
-      <h2 className="text-xl font-bold">Nuevo avistamiento</h2>
+    <main className="mx-auto max-w-3xl p-6 space-y-4">
+      <h2 className="text-xl font-bold">Mapa</h2>
+      <p className="text-sm text-gray-600">
+        Mapa interactivo de CDMX con tus avistamientos locales.
+      </p>
 
-      {/* Foto */}
-      <label className="block text-sm font-medium">Foto (cámara o galería)</label>
-      <input
-        className="w-full border rounded p-3"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        aria-label="Subir foto"
-        onFocus={() => speak('Subir foto')}
-        onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-      />
-      {previewUrl && (
-        <img
-          src={previewUrl}
-          alt="Vista previa"
-          className="rounded-xl border w-full max-h-72 object-cover"
-          onLoad={() => URL.revokeObjectURL(previewUrl)}
-        />
-      )}
+      <div className="rounded-2xl border overflow-hidden h-[28rem]">
+        <MapContainer
+          center={center}
+          zoom={zoom}
+          scrollWheelZoom={true}
+          className="h-full w-full"
+        >
+          <TileLayer
+            // OpenStreetMap
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+          />
 
-      {/* Selecciones */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium">Especie</label>
-          <select
-            className="w-full border rounded p-2"
-            value={speciesId}
-            onChange={(e) => setSpeciesId(e.target.value as SpeciesId)}
-            onFocus={() => speak('Seleccionar especie')}
-          >
-            {SPECIES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Etapa</label>
-          <select
-            className="w-full border rounded p-2"
-            value={phenophase}
-            onChange={(e) => setPhenophase(e.target.value as Pheno)}
-            onFocus={() => speak('Seleccionar etapa')}
-          >
-            <option value="brotacion">Brotación</option>
-            <option value="boton">Botón floral</option>
-            <option value="floracion">Floración</option>
-            <option value="fructificacion">Fructificación</option>
-          </select>
-        </div>
+          {markers.map(({ s, color, pos }) => (
+            <CircleMarker
+              key={s.id}
+              center={pos}
+              radius={10}
+              weight={3}
+              color={color}
+              fillColor={color}
+              fillOpacity={0.8}
+            >
+              <Popup>
+                <div style={{ maxWidth: 220 }}>
+                  <h4 style={{ margin: '0 0 .25rem 0' }}>
+                    {s.speciesId.replaceAll('_', ' ')}
+                  </h4>
+                  <p style={{ margin: 0 }}>
+                    <strong>Etapa:</strong> {s.phenophase}<br />
+                    <strong>Fecha:</strong> {new Date(s.datetimeISO).toLocaleString()}<br />
+                    {s.accuracyM ? <><strong>Precisión:</strong> ±{Math.round(s.accuracyM)} m<br/></> : null}
+                    <strong>Ubicación:</strong> {s.lat?.toFixed(5)}, {s.lon?.toFixed(5)}
+                  </p>
+                  {s.photoDataURL && (
+                    <img
+                      src={s.photoDataURL}
+                      alt="foto"
+                      style={{ marginTop: 8, width: '100%', borderRadius: 12, border: '1px solid #ddd' }}
+                    />
+                  )}
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
       </div>
 
-      {/* Ubicación */}
-      <p className="text-sm text-gray-600">
-        Ubicación: {lat?.toFixed(5) ?? '—'}, {lon?.toFixed(5) ?? '—'}{' '}
-        {acc ? `(±${Math.round(acc)} m)` : ''}
-      </p>
+      {!hasData && (
+        <div className="text-sm text-gray-500">
+          Aún no hay avistamientos guardados en este dispositivo. Ve a{' '}
+          <Link
+            href="/capture"
+            className="underline"
+            onMouseEnter={() => speak('Tomar foto')}
+            onFocus={() => speak('Tomar foto')}
+            onClick={() => speak('Tomar foto')}
+          >
+            Tomar foto
+          </Link>{' '}
+          para registrar el primero.
+        </div>
+      )}
 
-      <button
-        disabled={submitting}
-        onClick={onSubmit}
-        className="w-full p-4 rounded-2xl bg-green-600 text-white font-semibold disabled:opacity-50"
-        onFocus={() => speak('Confirmar avistamiento')}
-        onMouseEnter={() => speak('Confirmar avistamiento')}
+      <Link
+        href="/"
+        className="block text-center p-3 rounded-xl bg-white border shadow"
+        onMouseEnter={() => speak('Volver al inicio')}
+        onFocus={() => speak('Volver al inicio')}
+        onClick={() => speak('Volver al inicio')}
       >
-        {submitting ? 'Guardando…' : 'Confirmar'}
-      </button>
-
-      <p className="text-xs text-gray-500">
-        *MVP: se guarda localmente. Luego conectaremos base de datos en la nube.
-      </p>
+        ← Volver
+      </Link>
     </main>
   );
 }
